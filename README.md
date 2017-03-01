@@ -6,8 +6,10 @@ All the modules were created and tested on a Model B, Revision 2 Raspberry Pi wi
 Just grab any python module and put it in the directory of your project
 
 ## Module List
-* **HD44780**: A module that provides an interface for HD44780 or similar LCD display controllers
+* **HD44780**: A module that provides an interface for HD44780 or similar LCD controllers
 
 ---
 
-You may also [read the License](https://github.com/ioannes-rpi/if/blob/master/LICENSE)
+Author and Mainainer: [Ioannes Bracciano](mailto:john.bracciano@hotmail.gr)
+
+[Read the License](https://github.com/ioannes-rpi/if/blob/master/LICENSE)
