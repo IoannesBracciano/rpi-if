@@ -10,6 +10,6 @@ Just grab any python module and put it in the directory of your project
 
 ---
 
-Author and Mainainer: [Ioannes Bracciano](mailto:john.bracciano@hotmail.gr)
+Author and Maintainer: [Ioannes Bracciano](mailto:john.bracciano@hotmail.gr)
 
 [Read the License](https://github.com/ioannes-rpi/if/blob/master/LICENSE)
