@@ -230,38 +230,48 @@ def turn_display_off():
   __instruct(this.__INSTR_DISP_OFF)
 
 
-# Clears the display
 def clear():
+  """ Clear the display """
   __instruct(this.__INSTR_CLR_DISP)
 
 
-# Shift cursor to the left by the specified number of places
-def shift_cursor_left(places=1):
-  for i in range(places):
+def shift_cursor(direction):
+  """ Shift the cursor to the specified direction by one place
+
+  Parameters
+  ----------
+  direction : str
+       the direction of cursor shift, should be either "left" or "right"
+  """
+  if direction == "left":
     __instruct(this.__INSTR_SHIFT_CURSOR_LEFT)
-
-
-# Shift cursor to the right by the specified number of places
-def shift_cursor_right(places=1):
-  for i in range(places):
+  elif direction == "right":
     __instruct(this.__INSTR_SHIFT_CURSOR_RIGHT)
 
 
-# Shift screen to the left
-def shift_screen_left(places=1):
-  for i in range(places):
+def shift_screen(direction):
+  """ Shift the screen to the specified direction by one place
+
+  Parameters
+  ----------
+  direction : str
+       the direction of screen shift, should be either "left" or "right"
+  """
+  if direction == "left":
     __instruct(this.__INSTR_SHIFT_SCREEN_LEFT)
-
-
-# Shift screen to the right
-def shift_screen_right(places=1):
-  for i in range(places):
+  elif direction == "right":
     __instruct(this.__INSTR_SHIFT_SCREEN_RIGHT)
 
 
-# Sets the CGRAM address
-# User has the ability to load up to 8 custom character patterns
 def set_cgram_address(address):
+  """ Specifies the address in CGRAM which subsequent instructions may
+  write to or read from
+
+  Parameters
+  ----------
+  address : int
+       the address in CGRAM. Addresses in CGRAM span from 0x00 up to 0x07
+  """
   if address < 0x00 or address >0x3f:
     raise ValueError("Invalid CGRAM address set: {}\
         CGRAM address space spans from 0x00 to 0x3f".format(address))
