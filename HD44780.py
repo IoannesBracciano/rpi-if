@@ -27,13 +27,9 @@
 
 
 """
-  This module Provides an interface for HD44780 controllers, or other
+  This module provides an interface for HD44780 controllers, or other
   controllers that have a similar instruction set as HD44780
 """
-
-
-from RPi import GPIO as GPIO
-from time import sleep
 
 
 ###########################
@@ -104,7 +100,11 @@ __FLAG_5X8_FONT                       = 0b00000
 __FLAG_5X10_FONT                      = 0b00100
 
 
-# Various default values
+from time import sleep
+from sys import modules
+from RPi import GPIO as GPIO
+
+
 # Default pin numbers (BCM numbering)
 PIN_DEFS = {
     'rs':    21 if GPIO.RPI_REVISION==1 else 27,
@@ -112,21 +112,41 @@ PIN_DEFS = {
     'db':   [4, 25, 24, 23] }
 #            ^  ^   ^   ^
 #          DB7 DB6 DB5 DB4
+
+# Default number of screen lines
 __DEFAULT_NUM_LINES = 1
+
+# Default font to use
 __DEFAULT_FONT = "5x8"
 
-
-from sys import modules
 
 # Getting a pointer to this module
 this = modules[__name__]
 
 
-# Initializes HD44780 driver
-# This needs to be called before any other function, providing the correct
-# pin numbers (BCM numbering, most significant first)
 def init (pins=None):
   """ Initialize the module and the controller
+
+  If the display is not connected on the default pins, you need to provide
+  a custom dictionary defining your pin numbers (following the BCM numbering
+  scheme). `init` needs to be called before any other function in the module.
+
+  Notes
+  -----
+  Initialization process of the controller requires a specific algorithm to
+  ensure it is in a known initial state. The algorithm, that is implemented
+  in this function, can be found in Hitachi's official data-sheet on pages 45
+  and 46 for 8-bit mode and 4-bit mode initialization respectively.
+
+  Examples
+  --------
+  Custom pin numbers can be given constructing a dictionary:
+
+  >> pins = {
+  >>     'rs' : 21,
+  >>     'e'  : 22,
+  >>     'db' : [4, 25, 24, 23] }
+  >> HD44780.init(pins)
   """
   if pins:
     if "rs" not in pins or "e" not in pins or "db" not in pins:
@@ -146,10 +166,7 @@ def init (pins=None):
 
   this.__bit_mode = len(this.__pins['db'])
 
-  # Initialization process requires to send the 'Set Function'
-  # instruction 3 times at specific time intervals
-  # For more info checkout
-  # http://www.8051projects.net/lcd-interfacing/initialization.php
+  # Controller initialization process
   GPIO.output(this.__pins['db'][2], GPIO.HIGH)
   GPIO.output(this.__pins['db'][3], GPIO.HIGH)
   __signal_enable()
@@ -166,10 +183,9 @@ def init (pins=None):
   set_function(   bit_mode = len(this.__pins['db']),
                   num_lines = this.__DEFAULT_NUM_LINES,
                   font = this.__DEFAULT_FONT   )
-
-  # Initialization process complete
-  # Clear the screen
+  display_off()
   clear()
+  set_entry_mode("incr", False)
 
 
 def clear():
@@ -185,7 +201,7 @@ def home():
   __instruct(this.__INSTR_RET_HOME)
 
 
-def set_entry_mode(mode="incr", shift_screen=False):
+def set_entry_mode(mode="incr", shift=False):
   """ Set whether cursor position will increment or decrement after each
   `write` instruction, and whether the screen will shift with  the cursor
   
@@ -193,7 +209,7 @@ def set_entry_mode(mode="incr", shift_screen=False):
   ----------
   mode : {'incr', 'decr'}, optional
        whether the cursor position will increment or decrement
-  shift_screen : {False, True}, optional
+  shift : {False, True}, optional
        whether the screen will shift with the cursor
 
   Raises
@@ -204,18 +220,18 @@ def set_entry_mode(mode="incr", shift_screen=False):
   if mode not in ("incr", "decr"):
     raise ValueError("`mode` should be either 'incr' or 'decr', was: {}"\
         .format(mode))
-  if shift_screen not in (False, True):
+  if shift not in (False, True):
     raise ValueError("`shift_screen` should be either True or False, was: {}"\
-        .format(shift_screen))
+        .format(shift))
 
   if mode == "decr":
     __instruct(   this.__INSTR_ENTRY_MODE_SET
                 | this.__FLAG_CURSOR_DECR
-                | shift_screen   )
+                | shift   )
   elif mode == "incr":
     __instruct(   this.__INSTR_ENTRY_MODE_SET
                 | this.__FLAG_CURSOR_INCR
-                | shift_screen   )
+                | shift   )
 
 
 def display_on(cursor=False, blink=False):
@@ -402,20 +418,16 @@ def write(stuff):
     __instruct(this.__INSTR_WRITE | (stuff & 0xff))
 
 
-# Signals the enable pin
-# (sets it to HIGH and then back to LOW)
-# When signaled, the 'enable' pin lets the
-# currently formed instruction be executed.
-# See the controller's documentation for the
-# instruction codes
 def __signal_enable():
+  """ Passes the instruction carried on the pins to the controller
+  """
   GPIO.output(this.__pins['e'], GPIO.HIGH)
   GPIO.output(this.__pins['e'], GPIO.LOW)
 
 
-# Prepares the instruction and sends it to the controller
-# depending on the bit mode selected
 def __instruct(instruction):
+  """ Prepares the instruction to be sent to the controller
+  """
   # Prepare bits
   bits = bin(instruction)[2:].zfill(10)
   # Prepare rs pin
@@ -426,13 +438,17 @@ def __instruct(instruction):
   else:
     __instruct_8_bit_mode(bits)
 
+  # To ensure instruction has been fully processed by the controller before
+  # sending another one
+  # TODO Use that only when there is no possibility of reading the busy state
+  # indicator from the controller
   sleep(0.001)
 
 
-# Breaks instruction to two and send it to the controller
-# 4 bits at a time  
 def __instruct_4_bit_mode(bits):
-
+  """ Breaks the instruction into 2 chunks of 4 bits that are sequentially sent
+  to the controller
+  """
   for i in range(2,6):
     GPIO.output(this.__pins['db'][i-2], int(bits[i]))
 
@@ -444,8 +460,9 @@ def __instruct_4_bit_mode(bits):
   __signal_enable()
 
 
-# Sends the whole instruction to the controller
 def __instruct_8_bit_mode(bits):
+  """ Sends the instruction to the controller
+  """
   for i in range(2,10):
     GPIO.output(this.__pins['db'][i-2], int(bits[i]))
 
